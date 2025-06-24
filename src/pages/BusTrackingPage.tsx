@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom'; // Keep Navigate for 404 redirect
 import { Bus, Users, Clock, Navigation, AlertTriangle, Phone } from 'lucide-react';
 import { MapView } from '../components/MapView';
 import { StopsList } from '../components/StopsList';
@@ -11,21 +11,26 @@ export const BusTrackingPage: React.FC = () => {
   const { busId } = useParams<{ busId: string }>();
   const [bus, setBus] = useState<BusType | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isLoading, setIsLoading] = useState(true); // Add a loading state
 
   useEffect(() => {
+    setIsLoading(true); // Start loading when busId changes
     const foundBus = mockBuses.find(b => b.id === busId);
     if (foundBus) {
       setBus(foundBus);
+    } else {
+      setBus(null); // Ensure bus is null if not found
     }
+    setIsLoading(false); // End loading after search
   }, [busId]);
 
   // Simulate real-time location updates
   useEffect(() => {
-    if (!bus) return;
+    if (!bus || isLoading) return; // Don't simulate if bus is null or still loading
 
     const interval = setInterval(() => {
       setBus(prevBus => {
-        if (!prevBus) return null;
+        if (!prevBus) return null; // Should not happen if we're here, but good practice
         
         // Simulate slight movement for active buses
         if (prevBus.status === 'active') {
@@ -45,12 +50,24 @@ export const BusTrackingPage: React.FC = () => {
     }, 5000); // Update every 5 seconds
 
     return () => clearInterval(interval);
-  }, [bus]);
+  }, [bus, isLoading]); // Add isLoading to dependency array
 
-  if (!bus) {
-    return <Navigate to="/" replace />;
+  // 1. Show loading indicator
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-600 text-lg">
+        Loading bus details...
+      </div>
+    );
   }
 
+  // 2. If not loading and bus is still null, it means bus was not found
+  if (!bus) {
+    // Redirect to the 404 page or display a "Bus Not Found" message
+    return <Navigate to="/404" replace />; // Redirect to the specific 404 route
+  }
+
+  // If bus is found and not loading, render the tracking page content
   const statusConfig = {
     active: { 
       color: 'bg-success-500', 
@@ -177,14 +194,12 @@ export const BusTrackingPage: React.FC = () => {
             <MapView bus={bus} />
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                  <span>Completed Route</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 bg-primary-600 rounded-full"></div>
-                  <span>Remaining Route</span>
-                </div>
+                <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                <span>Completed Route</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 bg-primary-600 rounded-full"></div>
+                <span>Remaining Route</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-primary-600 rounded-full animate-pulse"></div>
